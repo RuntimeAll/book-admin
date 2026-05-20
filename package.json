@@ -1,9 +1,9 @@
 {
   "$schema": "https://json.schemastore.org/package",
-  "name": "ruoyi-vue-plus",
-  "version": "5.6.1-2.6.1",
-  "description": "RuoYi-Vue-Plus多租户管理系统",
-  "author": "LionLi",
+  "name": "book-admin",
+  "version": "0.0.1",
+  "description": "misikt 教师端复刻 · 后台管理",
+  "author": "book-ai",
   "license": "MIT",
   "type": "module",
   "scripts": {
