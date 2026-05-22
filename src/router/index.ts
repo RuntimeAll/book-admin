@@ -88,6 +88,21 @@ export const constantRoutes: RouteRecordRaw[] = [
         meta: { title: '个人中心', icon: 'user' }
       }
     ]
+  },
+  // ===== H1 卡 V-7 题库列表（本波静态占位；BE V-5 sys_menu 落地后动态路由会自动覆盖）=====
+  {
+    path: '/question',
+    component: Layout,
+    redirect: '/question/list',
+    meta: { title: '题库', icon: 'documentation' },
+    children: [
+      {
+        path: 'list',
+        component: () => import('@/views/question/list.vue'),
+        name: 'QuestionList',
+        meta: { title: '题目列表', icon: 'list' }
+      }
+    ]
   }
 ];
 
