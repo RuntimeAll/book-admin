@@ -236,7 +236,9 @@ const router = useRouter();
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 
 // ===== 状态 =====
-const editId = ref<number | null>(null);
+// ⚠️ editId 用 string — Snowflake 19 位超 Number.MAX_SAFE_INTEGER (2^53)，
+// Number(route.params.id) 会精度丢（...3970 → ...4000），loadDetail 拿不到数据 + 保存会建新行
+const editId = ref<string | null>(null);
 const loading = ref(false);
 const submitting = ref(false);
 
@@ -435,7 +437,7 @@ const parseOptionsFromVO = (vo: any): OptionItem[] => {
   return [];
 };
 
-const loadDetail = async (id: number) => {
+const loadDetail = async (id: string) => {
   loading.value = true;
   try {
     const res: any = await getAdminQuestion(id);
@@ -558,9 +560,11 @@ onMounted(async () => {
   await loadTree();
   const rid = route.params.id;
   if (rid) {
-    editId.value = Number(rid);
-    if (!Number.isNaN(editId.value)) {
-      await loadDetail(editId.value);
+    // 全程字符串处理，避免 Snowflake Number 精度丢
+    const idStr = String(Array.isArray(rid) ? rid[0] : rid).trim();
+    if (idStr && /^\d+$/.test(idStr)) {
+      editId.value = idStr;
+      await loadDetail(idStr);
     } else {
       editId.value = null;
     }

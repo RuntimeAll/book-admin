@@ -139,7 +139,7 @@
 </template>
 
 <script setup name="QuestionList" lang="ts">
-import { listAdminQuestion, lazyTreeKnowledge } from '@/api/admin/question';
+import { listAdminQuestion, lazyTreeKnowledge, publishAdminQuestion, delAdminQuestion } from '@/api/admin/question';
 import type { QuestionKnowledgeNode, QuestionQuery, QuestionVO } from '@/api/admin/question/types';
 
 const router = useRouter();
@@ -327,16 +327,47 @@ const handleEdit = (row: QuestionVO) => {
   router.push({ path: `/question/edit/${row.id}` });
 };
 
-/** 发布（V-3 占位，下波接） */
-const handlePublish = (row: QuestionVO) => {
-  console.log('[QuestionList] publish 占位（V-3 下波接）:', row.id);
-  proxy?.$modal.msgWarning(`发布占位 — 下波接 publish 端点（题 id=${row.id}）`);
+/** 发布（V-3）— status 0→1 单向，状态机由 BE service 层兜底（已发布再发返 500） */
+const handlePublish = async (row: QuestionVO) => {
+  // ⚠️ row.id 是字符串（Snowflake 19 位），全程不走 Number()
+  const idStr = String(row.id);
+  try {
+    await proxy?.$modal.confirm(`确认发布题目 #${idStr}？发布后不可改为草稿。`);
+  } catch {
+    return; // 用户取消
+  }
+  try {
+    const res: any = await publishAdminQuestion(idStr);
+    if (res?.code === 200) {
+      proxy?.$modal.msgSuccess('发布成功');
+      getList();
+    } else {
+      proxy?.$modal.msgError(res?.msg || '发布失败');
+    }
+  } catch (err: any) {
+    proxy?.$modal.msgError(err?.message || '发布失败');
+  }
 };
 
-/** 删除（V-2 占位，下波接） */
-const handleDelete = (row: QuestionVO) => {
-  console.log('[QuestionList] delete 占位（V-2 下波接）:', row.id);
-  proxy?.$modal.msgWarning(`删除占位 — 下波接 delete 端点（题 id=${row.id}）`);
+/** 软删（V-2）— biz_paper_question 引用校验由 BE 兜底（被引用题返 500 提示） */
+const handleDelete = async (row: QuestionVO) => {
+  const idStr = String(row.id);
+  try {
+    await proxy?.$modal.confirm(`确认软删题目 #${idStr}？已被试卷引用的题会被拒绝。`);
+  } catch {
+    return;
+  }
+  try {
+    const res: any = await delAdminQuestion(idStr);
+    if (res?.code === 200) {
+      proxy?.$modal.msgSuccess('删除成功');
+      getList();
+    } else {
+      proxy?.$modal.msgError(res?.msg || '删除失败');
+    }
+  } catch (err: any) {
+    proxy?.$modal.msgError(err?.message || '删除失败');
+  }
 };
 
 // ===== 工具方法 =====

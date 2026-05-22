@@ -139,7 +139,9 @@ export interface QuestionPageResult {
  * 题目编辑表单（POST /admin/question/edit 入参 — PRD §3.1 严格对齐）
  */
 export interface QuestionForm {
-  id: number | null; // null = 新建 / 数值 = 编辑
+  // ⚠️ id 用 string — Snowflake 19 位超 Number.MAX_SAFE_INTEGER (2^53)，JS Number 转会精度丢
+  // BE Jackson @JsonSerialize(ToStringSerializer) 已经把 Long 序列化为字符串，FE 全程字符串处理
+  id: string | null; // null = 新建 / 字符串 = 编辑
   questionType: number;
   difficult: number;
   subjectId: string;
