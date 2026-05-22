@@ -101,6 +101,13 @@ export const constantRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/question/list.vue'),
         name: 'QuestionList',
         meta: { title: '题目列表', icon: 'list' }
+      },
+      {
+        path: 'edit/:id?',
+        component: () => import('@/views/question/edit.vue'),
+        name: 'QuestionEdit',
+        hidden: true,
+        meta: { title: '编辑题目', activeMenu: '/question/list', noCache: true }
       }
     ]
   }
