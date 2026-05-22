@@ -139,8 +139,8 @@
 </template>
 
 <script setup name="QuestionList" lang="ts">
-import { listAdminQuestion } from '@/api/admin/question';
-import type { QuestionQuery, QuestionVO } from '@/api/admin/question/types';
+import { listAdminQuestion, lazyTreeKnowledge } from '@/api/admin/question';
+import type { QuestionKnowledgeNode, QuestionQuery, QuestionVO } from '@/api/admin/question/types';
 
 const router = useRouter();
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
@@ -165,25 +165,27 @@ const queryParams = reactive<QuestionQuery>({
   status: ''
 });
 
-// 章节树本波静态 mock（下波接 lazyTree 端点）
-const chapterTree = ref([
-  { id: '', name: '全部', children: [] },
-  {
-    id: '3071001',
-    name: '初一数学',
-    children: [
-      { id: '3071001001', name: '有理数' },
-      { id: '3071001002', name: '整式' }
-    ]
-  },
-  {
-    id: '3081001',
-    name: '初二数学',
-    children: [
-      { id: '3081001001', name: '勾股定理' }
-    ]
-  }
+/**
+ * 章节树（POST /admin/question/lazyTree 真接入）
+ *
+ * BE 一次性返整树（biz_subject ~2k 行内存建树）；FE 头部加 "全部" 哑根用于清筛选。
+ * 接口失败兜底空树 + 仍可点 "全部" 不卡死页面。
+ */
+const chapterTree = ref<Array<QuestionKnowledgeNode | { id: string; name: string; children?: QuestionKnowledgeNode[] }>>([
+  { id: '', name: '全部' }
 ]);
+
+const loadChapterTree = async () => {
+  try {
+    const res = await lazyTreeKnowledge({});
+    const envelope: any = res;
+    const data: QuestionKnowledgeNode[] = envelope?.data ?? [];
+    chapterTree.value = [{ id: '', name: '全部' }, ...(Array.isArray(data) ? data : [])];
+  } catch (err) {
+    console.warn('[QuestionList] lazyTree 接口失败，章节树仅显示 "全部"：', err);
+    chapterTree.value = [{ id: '', name: '全部' }];
+  }
+};
 
 /** Mock 兜底数据（BE 未 ready 时） */
 const buildMockList = (): QuestionVO[] => {
@@ -359,6 +361,7 @@ const formatTime = (ts?: number | string) => {
 };
 
 onMounted(() => {
+  loadChapterTree();
   getList();
 });
 </script>
