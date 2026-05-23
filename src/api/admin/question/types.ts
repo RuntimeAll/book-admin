@@ -94,6 +94,7 @@ export interface QuestionVO {
  *
  * 对齐 misikt QuestionPageBo 字段名（pageIndex 不是 pageNum！）
  * 新增：status 状态过滤（admin 列表需筛 0/1/2）
+ * H1 Bug2：tagIds 标签多选筛选（OR 语义，BE 用 tag_id IN 子查询）
  */
 export interface QuestionQuery {
   pageIndex: number; // ⚠️ misikt 风格 pageIndex 不是 pageNum
@@ -103,8 +104,20 @@ export interface QuestionQuery {
   difficult?: number | null;
   keyWord?: string;
   status?: string; // '0' / '1' / '2' — admin 端筛选状态
+  tagIds?: number[]; // H1 Bug2: 标签 id 多选，BE 用 tag_id IN 子查询（Long 数组）
   notTaskQuestion?: number; // 0=不限 / 1=过滤
   notUsedQuestion?: number;
+}
+
+/**
+ * 自由标签下拉选项 VO（POST /admin/question/freeTagSearch 返回元素）
+ *
+ * H1 Bug2：edit / list 标签 remote select 候选项；useCount 用于排序提示。
+ */
+export interface FreeTagOption {
+  id: number;
+  name: string;
+  useCount: number;
 }
 
 /**

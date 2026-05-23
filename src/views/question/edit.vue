@@ -188,27 +188,33 @@
           </div>
         </el-form-item>
 
-        <!-- 标签 -->
+        <!-- 标签（H1 Bug2：remote select 搜索式多选 + allow-create 新建） -->
         <el-form-item label="标签">
-          <div class="tag-wrap">
-            <el-tag
-              v-for="(tag, idx) in form.tagNames"
-              :key="tag"
-              closable
-              :disable-transitions="false"
-              class="tag-item"
-              @close="removeTag(idx)"
-            >{{ tag }}</el-tag>
-            <el-input
-              v-if="tagInputVisible"
-              ref="tagInputRef"
-              v-model="tagInputValue"
-              class="tag-input"
-              size="small"
-              @keyup.enter="handleTagAdd"
-              @blur="handleTagAdd"
-            />
-            <el-button v-else size="small" @click="showTagInput">+ 新增标签</el-button>
+          <el-select
+            v-model="form.tagNames"
+            multiple
+            filterable
+            remote
+            :remote-method="onTagSearch"
+            :loading="tagSearching"
+            allow-create
+            default-first-option
+            reserve-keyword
+            placeholder="搜索标签 / 直接输入新标签"
+            style="width: 560px"
+          >
+            <el-option
+              v-for="opt in tagOptions"
+              :key="opt.id"
+              :label="opt.name"
+              :value="opt.name"
+            >
+              <span>{{ opt.name }}</span>
+              <span class="text-gray-400 text-xs ml-2">({{ opt.useCount }})</span>
+            </el-option>
+          </el-select>
+          <div class="text-xs text-gray-400 mt-1">
+            输入关键词搜索已有标签；找不到时直接回车新建（BE 自动建字典）
           </div>
         </el-form-item>
       </el-form>
@@ -222,9 +228,11 @@ import {
   editAdminQuestion,
   getAdminQuestion,
   lazyTreeKnowledge,
-  uploadAdminQuestionFile
+  uploadAdminQuestionFile,
+  searchAdminFreeTag
 } from '@/api/admin/question';
 import type {
+  FreeTagOption,
   OptionItem,
   QuestionForm,
   QuestionKnowledgeNode,
@@ -338,28 +346,25 @@ const removeOption = (idx: number) => {
   reindexOptionKeys();
 };
 
-// ===== 标签动态输入 =====
-const tagInputVisible = ref(false);
-const tagInputValue = ref('');
-const tagInputRef = ref<ElInputInstance>();
+// ===== 标签 remote search（H1 Bug2） =====
+// keyword='' 时由 BE 返热门 top 20；非空时走 LIKE。
+// allow-create 让用户直接回车输入新 tag（BE 收 tagNames 字符串数组，按 name 查/建字典）。
+const tagOptions = ref<FreeTagOption[]>([]);
+const tagSearching = ref(false);
 
-const showTagInput = async () => {
-  tagInputVisible.value = true;
-  await nextTick();
-  tagInputRef.value?.focus();
-};
-
-const handleTagAdd = () => {
-  const value = tagInputValue.value.trim();
-  if (value && !form.tagNames.includes(value)) {
-    form.tagNames.push(value);
+const onTagSearch = async (keyword: string) => {
+  tagSearching.value = true;
+  try {
+    const kw = (keyword ?? '').trim();
+    const res: any = await searchAdminFreeTag(kw === '' ? null : kw, 20);
+    const data: FreeTagOption[] = res?.data ?? [];
+    tagOptions.value = Array.isArray(data) ? data : [];
+  } catch (err) {
+    console.warn('[QuestionEdit] freeTagSearch 失败：', err);
+    tagOptions.value = [];
+  } finally {
+    tagSearching.value = false;
   }
-  tagInputVisible.value = false;
-  tagInputValue.value = '';
-};
-
-const removeTag = (idx: number) => {
-  form.tagNames.splice(idx, 1);
 };
 
 // ===== 图上传 =====
@@ -556,15 +561,21 @@ const handleBack = () => {
   router.push('/question/list');
 };
 
-onMounted(async () => {
-  await loadTree();
+onMounted(() => {
+  // 性能优化（H1 卡 §6 R12）：loadTree（biz_subject 2116 行整树 ~200KB）
+  // 和 loadDetail（5 表 JOIN）从串行 await 改并行 fire；loading 只覆盖 detail —
+  // 用户进编辑页先看到表单骨架，章节/知识点树异步填进 el-tree-select
+  // race condition 不存在：handleSubmit 校验 leafIdSet 时用户必须已点选过知识点，
+  // 那时树肯定已加载完
+  loadTree();
+  // H1 Bug2：预拉热门标签 top 20，下拉无输入时也能展开看候选（与 loadTree 并行）
+  onTagSearch('');
   const rid = route.params.id;
   if (rid) {
-    // 全程字符串处理，避免 Snowflake Number 精度丢
     const idStr = String(Array.isArray(rid) ? rid[0] : rid).trim();
     if (idStr && /^\d+$/.test(idStr)) {
       editId.value = idStr;
-      await loadDetail(idStr);
+      loadDetail(idStr);
     } else {
       editId.value = null;
     }
@@ -648,18 +659,4 @@ onMounted(async () => {
   color: #303133;
 }
 
-.tag-wrap {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-}
-
-.tag-item {
-  margin-right: 4px;
-}
-
-.tag-input {
-  width: 120px;
-}
 </style>

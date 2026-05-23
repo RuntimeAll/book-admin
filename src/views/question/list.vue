@@ -53,6 +53,31 @@
                     <el-option label="已删除" value="2" />
                   </el-select>
                 </el-form-item>
+                <el-form-item label="标签" prop="tagIds">
+                  <el-select
+                    v-model="queryParams.tagIds"
+                    multiple
+                    filterable
+                    remote
+                    :remote-method="onTagSearch"
+                    :loading="tagSearching"
+                    placeholder="搜索标签筛选"
+                    style="width: 280px"
+                    clearable
+                    collapse-tags
+                    collapse-tags-tooltip
+                  >
+                    <el-option
+                      v-for="opt in tagOptions"
+                      :key="opt.id"
+                      :label="opt.name"
+                      :value="opt.id"
+                    >
+                      <span>{{ opt.name }}</span>
+                      <span class="text-gray-400 text-xs ml-2">({{ opt.useCount }})</span>
+                    </el-option>
+                  </el-select>
+                </el-form-item>
                 <el-form-item label="关键词" prop="keyWord">
                   <el-input v-model="queryParams.keyWord" placeholder="题干关键词" clearable @keyup.enter="handleQuery" />
                 </el-form-item>
@@ -139,8 +164,8 @@
 </template>
 
 <script setup name="QuestionList" lang="ts">
-import { listAdminQuestion, lazyTreeKnowledge, publishAdminQuestion, delAdminQuestion } from '@/api/admin/question';
-import type { QuestionKnowledgeNode, QuestionQuery, QuestionVO } from '@/api/admin/question/types';
+import { listAdminQuestion, lazyTreeKnowledge, publishAdminQuestion, delAdminQuestion, searchAdminFreeTag } from '@/api/admin/question';
+import type { FreeTagOption, QuestionKnowledgeNode, QuestionQuery, QuestionVO } from '@/api/admin/question/types';
 
 const router = useRouter();
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
@@ -162,8 +187,29 @@ const queryParams = reactive<QuestionQuery>({
   questionType: null,
   difficult: null,
   keyWord: '',
-  status: ''
+  status: '',
+  tagIds: []
 });
+
+// ===== 标签 remote search（H1 Bug2 - list 筛选） =====
+// value 用 tag.id（number），BE page 入参 AdminQuestionPageBo.tagIds: List<Long> OR 语义
+const tagOptions = ref<FreeTagOption[]>([]);
+const tagSearching = ref(false);
+
+const onTagSearch = async (keyword: string) => {
+  tagSearching.value = true;
+  try {
+    const kw = (keyword ?? '').trim();
+    const res: any = await searchAdminFreeTag(kw === '' ? null : kw, 20);
+    const data: FreeTagOption[] = res?.data ?? [];
+    tagOptions.value = Array.isArray(data) ? data : [];
+  } catch (err) {
+    console.warn('[QuestionList] freeTagSearch 失败：', err);
+    tagOptions.value = [];
+  } finally {
+    tagSearching.value = false;
+  }
+};
 
 /**
  * 章节树（POST /admin/question/lazyTree 真接入）
@@ -313,6 +359,7 @@ const resetQuery = () => {
   queryParams.difficult = null;
   queryParams.keyWord = '';
   queryParams.status = '';
+  queryParams.tagIds = [];
   queryParams.pageIndex = 1;
   getList();
 };
@@ -393,6 +440,8 @@ const formatTime = (ts?: number | string) => {
 
 onMounted(() => {
   loadChapterTree();
+  // H1 Bug2：预拉热门标签 top 20，筛选区下拉无输入也能看候选
+  onTagSearch('');
   getList();
 });
 </script>

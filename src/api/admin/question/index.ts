@@ -18,7 +18,8 @@ import type {
   QuestionVO,
   QuestionKnowledgeNode,
   QuestionLazyTreeQuery,
-  QuestionUploadResult
+  QuestionUploadResult,
+  FreeTagOption
 } from './types';
 
 /**
@@ -108,5 +109,25 @@ export function uploadAdminQuestionFile(formData: FormData): AxiosPromise<Questi
     headers: {
       'Content-Type': 'multipart/form-data'
     }
+  });
+}
+
+/**
+ * 自由标签搜索（POST /admin/question/freeTagSearch — H1 Bug2）
+ *
+ * keyword 为空 / null 时 BE 返热门 top N（按 use_count desc）；
+ * 非空 keyword 走 LIKE 模糊匹配。limit 默认 BE 兜底（一般 20）。
+ *
+ * @param keyword 搜索关键词；空串 / null = 取热门
+ * @param limit 返回上限（默认 BE 决定）
+ */
+export function searchAdminFreeTag(
+  keyword: string | null,
+  limit?: number
+): AxiosPromise<FreeTagOption[]> {
+  return request({
+    url: '/admin/question/freeTagSearch',
+    method: 'post',
+    data: { keyword, limit }
   });
 }
