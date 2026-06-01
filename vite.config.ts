@@ -24,7 +24,7 @@ export default defineConfig(({ mode, command }) => {
       open: true,
       proxy: {
         [env.VITE_APP_BASE_API]: {
-          // 指向 codeSpace2 master-admin 分支的 admin BE（7888），与主 codeSpace 用户端 BE（8080）物理隔离
+          // 指向 codeplace-B master-admin 分支的 admin BE（7888），与主 codeplace-A 用户端 BE（8080）物理隔离
           target: 'http://localhost:7888',
           changeOrigin: true,
           ws: true,
