@@ -1,10 +1,10 @@
 /**
- * book-admin · 卷库 CRUD TypeScript 类型契约（PRD-B-006）
+ * book-admin · 卷库 CRUD TypeScript 类型契约（PRD-B-006 round-2 修复）
  *
  * 对齐：
  * - BizPaper 实体字段（codeplace-B/book-server ruoyi-book BizPaper.java）
- * - PRD-B-006 AC4 卷库 CRUD 跑通
- * - 端点前缀 /admin/paper/** (待 BE AdminPaperController 落地)
+ * - AdminQuestionController POST 风格 + MisiktPageVo 分页响应
+ * - 端点前缀 /admin/paper/** (AdminPaperController)
  */
 
 /**
@@ -25,7 +25,7 @@ export enum PaperTypeEnum {
 }
 
 /**
- * 卷库列表项 VO
+ * 卷库列表项 VO（对齐 BizPaper 实体字段）
  */
 export interface PaperVO {
   id: number | string;
@@ -50,10 +50,10 @@ export interface PaperVO {
 }
 
 /**
- * 卷库分页查询入参
+ * 卷库分页查询入参（对齐 AdminQuestionPageBo 命名：pageIndex 不是 pageNum）
  */
 export interface PaperQuery {
-  pageNum: number;
+  pageIndex: number;
   pageSize: number;
   name?: string;
   subjectId?: string;
@@ -61,18 +61,20 @@ export interface PaperQuery {
 }
 
 /**
- * 卷库分页响应
+ * 卷库分页响应（MisiktPageVo 格式：list + total）
  */
 export interface PaperPageResult {
   total: number;
-  rows: PaperVO[];
+  list: PaperVO[];
+  pageNum: number;
+  pageSize: number;
 }
 
 /**
  * 卷库编辑表单（新建 + 修改统一）
  */
 export interface PaperForm {
-  id?: string | null;
+  id?: string | number | null;
   name: string;
   subjectId?: string;
   paperCategoryId?: string;

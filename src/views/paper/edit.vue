@@ -47,7 +47,7 @@
 </template>
 
 <script setup name="PaperEdit" lang="ts">
-import { addAdminPaper, updateAdminPaper, getAdminPaper } from '@/api/admin/paper';
+import { addAdminPaper, getAdminPaper } from '@/api/admin/paper';
 import type { PaperForm } from '@/api/admin/paper/types';
 
 const router = useRouter();
@@ -74,11 +74,12 @@ const rules = {
   name: [{ required: true, message: '请输入试卷名称', trigger: 'blur' }]
 };
 
-/** 加载详情（编辑模式） */
+/** 加载详情（编辑模式，POST /admin/paper/select/{id}） */
 const loadDetail = async (id: string) => {
   loading.value = true;
   try {
     const res: any = await getAdminPaper(id);
+    // RuoYi envelope: res = {code, msg, data}；data = PaperVO
     const detail = res?.data ?? res;
     if (detail) {
       Object.assign(form, {
@@ -102,6 +103,11 @@ const handleBack = () => {
   router.push('/paper/list');
 };
 
+/**
+ * 提交（POST /admin/paper/edit）
+ * id=null → 新建；id 有值 → 更新
+ * 响应：{code:200, msg, data:{id: number}}
+ */
 const handleSubmit = async () => {
   const valid = await formRef.value?.validate().catch(() => false);
   if (!valid) return;
@@ -111,22 +117,15 @@ const handleSubmit = async () => {
     const payload: PaperForm = { ...form };
     if (editId.value) {
       payload.id = editId.value;
-      const res: any = await updateAdminPaper(payload);
-      if (res?.code === 200 || res?.code === undefined) {
-        proxy?.$modal.msgSuccess('保存成功');
-        handleBack();
-      } else {
-        proxy?.$modal.msgError(res?.msg || '保存失败');
-      }
     } else {
       payload.id = null;
-      const res: any = await addAdminPaper(payload);
-      if (res?.code === 200 || res?.code === undefined) {
-        proxy?.$modal.msgSuccess('新建成功');
-        handleBack();
-      } else {
-        proxy?.$modal.msgError(res?.msg || '新建失败');
-      }
+    }
+    const res: any = await addAdminPaper(payload);
+    if (res?.code === 200 || res?.code === undefined) {
+      proxy?.$modal.msgSuccess(editId.value ? '保存成功' : '新建成功');
+      handleBack();
+    } else {
+      proxy?.$modal.msgError(res?.msg || '操作失败');
     }
   } catch (err: any) {
     proxy?.$modal.msgError(err?.message || '操作失败');

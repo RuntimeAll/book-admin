@@ -31,9 +31,6 @@
           <el-col :span="1.5">
             <el-button type="primary" plain icon="Plus" @click="handleAdd">新建试卷</el-button>
           </el-col>
-          <el-col v-if="useMockData" :span="6">
-            <el-tag type="warning" effect="plain">BE 未 ready - 显示 mock 数据</el-tag>
-          </el-col>
           <right-toolbar v-model:show-search="showSearch" @query-table="getList"></right-toolbar>
         </el-row>
       </template>
@@ -65,7 +62,7 @@
 
       <pagination
         v-show="total > 0"
-        v-model:page="queryParams.pageNum"
+        v-model:page="queryParams.pageIndex"
         v-model:limit="queryParams.pageSize"
         :total="total"
         @pagination="getList"
@@ -85,52 +82,36 @@ const paperList = ref<PaperVO[]>([]);
 const loading = ref(true);
 const showSearch = ref(true);
 const total = ref(0);
-const useMockData = ref(false);
 
 const queryFormRef = ref<ElFormInstance>();
 
 const queryParams = reactive<PaperQuery>({
-  pageNum: 1,
+  pageIndex: 1,
   pageSize: 20,
   name: '',
   status: ''
 });
 
-/** Mock 兜底数据 */
-const buildMockList = (): PaperVO[] => {
-  const now = Date.now();
-  return [
-    { id: 20001, name: '七年级数学期末模拟卷（2025）', questionCount: 25, score: 120, status: '1', createBy: 'admin', createTime: now - 86400000 * 5 },
-    { id: 20002, name: '八年级数学月考卷', questionCount: 20, score: 100, status: '1', createBy: 'admin', createTime: now - 86400000 * 3 },
-    { id: 20003, name: '专项练习：一元一次方程', questionCount: 10, score: 50, status: '0', createBy: 'admin', createTime: now - 86400000 }
-  ];
-};
-
-/** 拉卷库列表 */
+/** 拉卷库列表（POST /admin/paper/page，响应 MisiktPageVo: data.list + data.total） */
 const getList = async () => {
   loading.value = true;
   try {
     const res: any = await listAdminPaper(queryParams);
-    const envelope = res;
-    if (envelope?.rows !== undefined || envelope?.data?.rows !== undefined) {
-      const rows = envelope?.rows ?? envelope?.data?.rows ?? [];
-      paperList.value = rows;
-      total.value = envelope?.total ?? envelope?.data?.total ?? rows.length;
-      useMockData.value = false;
-    } else {
-      throw new Error('empty response');
-    }
-  } catch {
-    paperList.value = buildMockList();
-    total.value = paperList.value.length;
-    useMockData.value = true;
+    // RuoYi envelope: res = {code, msg, data}；data = MisiktPageVo: {total, list, ...}
+    const pageVo = res?.data ?? res;
+    paperList.value = pageVo?.list ?? [];
+    total.value = pageVo?.total ?? 0;
+  } catch (err: any) {
+    proxy?.$modal.msgError('加载失败：' + (err?.message ?? '未知错误'));
+    paperList.value = [];
+    total.value = 0;
   } finally {
     loading.value = false;
   }
 };
 
 const handleQuery = () => {
-  queryParams.pageNum = 1;
+  queryParams.pageIndex = 1;
   getList();
 };
 
@@ -138,7 +119,7 @@ const resetQuery = () => {
   queryFormRef.value?.resetFields();
   queryParams.name = '';
   queryParams.status = '';
-  queryParams.pageNum = 1;
+  queryParams.pageIndex = 1;
   getList();
 };
 
@@ -151,14 +132,13 @@ const handleEdit = (row: PaperVO) => {
 };
 
 const handleDelete = async (row: PaperVO) => {
-  const idStr = String(row.id);
   try {
     await proxy?.$modal.confirm(`确认删除试卷「${row.name}」？`);
   } catch {
     return;
   }
   try {
-    const res: any = await delAdminPaper(idStr);
+    const res: any = await delAdminPaper(String(row.id));
     if (res?.code === 200 || res?.code === undefined) {
       proxy?.$modal.msgSuccess('删除成功');
       getList();
