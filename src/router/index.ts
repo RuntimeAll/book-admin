@@ -89,7 +89,7 @@ export const constantRoutes: RouteRecordRaw[] = [
       }
     ]
   },
-  // ===== H1 卡 V-7 题库列表（本波静态占位；BE V-5 sys_menu 落地后动态路由会自动覆盖）=====
+  // ===== 题库（staticRoutes 兜底，BE sys_menu 落地后动态路由自动覆盖）=====
   {
     path: '/question',
     component: Layout,
@@ -108,6 +108,28 @@ export const constantRoutes: RouteRecordRaw[] = [
         name: 'QuestionEdit',
         hidden: true,
         meta: { title: '编辑题目', activeMenu: '/question/list', noCache: true }
+      }
+    ]
+  },
+  // ===== 卷库（PRD-B-006 FP8-10）=====
+  {
+    path: '/paper',
+    component: Layout,
+    redirect: '/paper/list',
+    meta: { title: '卷库', icon: 'form' },
+    children: [
+      {
+        path: 'list',
+        component: () => import('@/views/paper/list.vue'),
+        name: 'PaperList',
+        meta: { title: '试卷列表', icon: 'list' }
+      },
+      {
+        path: 'edit/:id?',
+        component: () => import('@/views/paper/edit.vue'),
+        name: 'PaperEdit',
+        hidden: true,
+        meta: { title: '编辑试卷', activeMenu: '/paper/list', noCache: true }
       }
     ]
   }

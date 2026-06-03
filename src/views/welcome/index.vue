@@ -6,7 +6,7 @@
     </div>
     <el-row :gutter="24" class="card-row">
       <el-col :xs="24" :sm="12" :lg="8">
-        <el-card class="entry-card" shadow="hover" @click="goTo('/book/question')">
+        <el-card class="entry-card" shadow="hover" @click="goTo('/question/list')">
           <div class="card-content">
             <svg-icon icon-class="documentation" class="card-icon" />
             <div class="card-title">题库管理</div>
@@ -15,7 +15,7 @@
         </el-card>
       </el-col>
       <el-col :xs="24" :sm="12" :lg="8">
-        <el-card class="entry-card" shadow="hover" @click="goTo('/book/paper')">
+        <el-card class="entry-card" shadow="hover" @click="goTo('/paper/list')">
           <div class="card-content">
             <svg-icon icon-class="form" class="card-icon" />
             <div class="card-title">卷库管理</div>

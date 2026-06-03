@@ -20,6 +20,8 @@ const modules = import.meta.glob('./../../views/**/*.vue');
 const MENU_WHITELIST = [
   '/welcome',
   '/book',
+  '/question',
+  '/paper',
   '/system/user',
   '/system/role',
   '/system/menu',
