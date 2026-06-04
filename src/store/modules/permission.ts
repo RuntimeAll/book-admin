@@ -21,7 +21,7 @@ const MENU_WHITELIST = [
   '/welcome',
   '/book',
   '/question',
-  '/paper',
+  // '/paper' — 卷库 admin 已砍 (PRD-B-006 收尾), 卷库挂题/编辑统一走教师端 book-ui
   '/system/user',
   '/system/role',
   '/system/menu',

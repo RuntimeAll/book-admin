@@ -2,24 +2,15 @@
   <div class="welcome-container">
     <div class="welcome-header">
       <h1>欢迎使用 misikt 管理后台</h1>
-      <p class="welcome-sub">题库 · 卷库 · 系统管理</p>
+      <p class="welcome-sub">题库 · 系统管理</p>
     </div>
-    <el-row :gutter="24" class="card-row">
+    <el-row :gutter="24" class="card-row" justify="center">
       <el-col :xs="24" :sm="12" :lg="8">
         <el-card class="entry-card" shadow="hover" @click="goTo('/question/list')">
           <div class="card-content">
             <svg-icon icon-class="documentation" class="card-icon" />
             <div class="card-title">题库管理</div>
             <div class="card-desc">录入 / 编辑 / 删除题目，维护公共题库供教师端使用</div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :xs="24" :sm="12" :lg="8">
-        <el-card class="entry-card" shadow="hover" @click="goTo('/paper/list')">
-          <div class="card-content">
-            <svg-icon icon-class="form" class="card-icon" />
-            <div class="card-title">卷库管理</div>
-            <div class="card-desc">新建 / 编辑 / 删除试卷，管理公共卷库供教师端使用</div>
           </div>
         </el-card>
       </el-col>

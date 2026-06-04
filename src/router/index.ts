@@ -111,28 +111,8 @@ export const constantRoutes: RouteRecordRaw[] = [
       }
     ]
   },
-  // ===== 卷库（PRD-B-006 FP8-10）=====
-  {
-    path: '/paper',
-    component: Layout,
-    redirect: '/paper/list',
-    meta: { title: '卷库', icon: 'form' },
-    children: [
-      {
-        path: 'list',
-        component: () => import('@/views/paper/list.vue'),
-        name: 'PaperList',
-        meta: { title: '试卷列表', icon: 'list' }
-      },
-      {
-        path: 'edit/:id?',
-        component: () => import('@/views/paper/edit.vue'),
-        name: 'PaperEdit',
-        hidden: true,
-        meta: { title: '编辑试卷', activeMenu: '/paper/list', noCache: true }
-      }
-    ]
-  }
+  // 卷库 admin (PRD-B-006 FP8-10) 已砍除 — 卷库挂题/编辑权限放到教师端 book-ui, admin 用户身份建出的卷自动归公共;
+  // 此处不再注册 /paper 路由 + 删 views/paper + 删 api/admin/paper.
 ];
 
 // 动态路由，基于用户权限动态去加载
