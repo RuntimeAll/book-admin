@@ -226,7 +226,7 @@
             <!-- 推荐标签分组（仅选了知识点时显示） -->
             <el-option-group
               v-if="recommendedTags.length > 0"
-              label="推荐标签（按知识点共现频次）"
+              label="推荐标签（该子树下题目共现频次）"
             >
               <el-option
                 v-for="tag in recommendedTags"
@@ -268,7 +268,7 @@ import {
   lazyTreeKnowledge,
   uploadAdminQuestionFile,
   searchAdminFreeTag,
-  tagByKnowledge
+  tagBySubject
 } from '@/api/admin/question';
 import type {
   FreeTagOption,
@@ -424,9 +424,9 @@ const loadRecommendedTags = async (knowledgeIds: string[]) => {
   }
   recommendLoading.value = true;
   try {
-    // 并行调所有 knowledgeId 的推荐接口
+    // 并行调所有 subjectId（叶子节点 id，LIKE 对自身也匹配）的推荐接口
     const results = await Promise.allSettled(
-      knowledgeIds.map((kid) => tagByKnowledge(kid, 50))
+      knowledgeIds.map((kid) => tagBySubject(kid, 50))
     );
     // 合并：tagId → 累加 coCount
     const mergeMap = new Map<number, TagWithCoCount>();
