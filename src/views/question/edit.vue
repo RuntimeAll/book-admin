@@ -221,12 +221,11 @@
               popper-class="tag-panel-popper"
               @after-leave="freeTagInput = ''"
             >
-              <!-- 触发器：模拟 el-select multiple 外观 -->
+              <!-- 触发器：模拟 el-select multiple 外观 (el-popover trigger=click 已自动处理开关, 不要重复 @click) -->
               <template #reference>
                 <div
                   class="tag-trigger"
                   :class="{ 'is-focus': tagPanelVisible }"
-                  @click="tagPanelVisible = !tagPanelVisible"
                 >
                   <!-- 已选 chip -->
                   <el-tag
