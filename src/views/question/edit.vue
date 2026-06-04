@@ -53,6 +53,26 @@
           <el-input v-model="form.stemText" type="textarea" :rows="4" placeholder="题干文本（与题干图至少填一项）" />
         </el-form-item>
 
+        <!-- 答案文本（PRD-B-006 收尾） -->
+        <el-form-item label="答案文本">
+          <el-input
+            v-model="form.answerText"
+            type="textarea"
+            :autosize="{ minRows: 2 }"
+            placeholder="填空/解答题的答案文本，选择题留空"
+          />
+        </el-form-item>
+
+        <!-- 解析文本（PRD-B-006 收尾） -->
+        <el-form-item label="解析文本">
+          <el-input
+            v-model="form.explainText"
+            type="textarea"
+            :autosize="{ minRows: 2 }"
+            placeholder="解题思路/解析说明，可选"
+          />
+        </el-form-item>
+
         <!-- 题干图 -->
         <el-form-item label="题干图">
           <el-upload
@@ -188,7 +208,7 @@
           </div>
         </el-form-item>
 
-        <!-- 标签（H1 Bug2：remote select 搜索式多选 + allow-create 新建） -->
+        <!-- 标签（H1 Bug2：remote select 搜索式多选 + allow-create 新建；PRD-B-006：推荐分组） -->
         <el-form-item label="标签">
           <el-select
             v-model="form.tagNames"
@@ -196,22 +216,40 @@
             filterable
             remote
             :remote-method="onTagSearch"
-            :loading="tagSearching"
+            :loading="tagSearching || recommendLoading"
             allow-create
             default-first-option
             reserve-keyword
             placeholder="搜索标签 / 直接输入新标签"
             style="width: 560px"
           >
-            <el-option
-              v-for="opt in tagOptions"
-              :key="opt.id"
-              :label="opt.name"
-              :value="opt.name"
+            <!-- 推荐标签分组（仅选了知识点时显示） -->
+            <el-option-group
+              v-if="recommendedTags.length > 0"
+              label="推荐标签（按知识点共现频次）"
             >
-              <span>{{ opt.name }}</span>
-              <span class="text-gray-400 text-xs ml-2">({{ opt.useCount }})</span>
-            </el-option>
+              <el-option
+                v-for="tag in recommendedTags"
+                :key="`rec-${tag.tagId}`"
+                :label="tag.tagName"
+                :value="tag.tagName"
+              >
+                <span>{{ tag.tagName }}</span>
+                <span class="text-gray-400 text-xs ml-2">共现 {{ tag.coCount }}</span>
+              </el-option>
+            </el-option-group>
+            <!-- 全字典搜索结果分组 -->
+            <el-option-group :label="recommendedTags.length > 0 ? '全部标签' : ''">
+              <el-option
+                v-for="opt in tagOptions"
+                :key="opt.id"
+                :label="opt.name"
+                :value="opt.name"
+              >
+                <span>{{ opt.name }}</span>
+                <span class="text-gray-400 text-xs ml-2">({{ opt.useCount }})</span>
+              </el-option>
+            </el-option-group>
           </el-select>
           <div class="text-xs text-gray-400 mt-1">
             输入关键词搜索已有标签；找不到时直接回车新建（BE 自动建字典）
@@ -229,14 +267,16 @@ import {
   getAdminQuestion,
   lazyTreeKnowledge,
   uploadAdminQuestionFile,
-  searchAdminFreeTag
+  searchAdminFreeTag,
+  tagByKnowledge
 } from '@/api/admin/question';
 import type {
   FreeTagOption,
   OptionItem,
   QuestionForm,
   QuestionKnowledgeNode,
-  QuestionVO
+  QuestionVO,
+  TagWithCoCount
 } from '@/api/admin/question/types';
 
 const route = useRoute();
@@ -257,6 +297,8 @@ interface EditFormState {
   difficult: number;
   subjectId: string;
   stemText: string;
+  answerText: string;   // PRD-B-006 收尾：答案文本（填空/解答题）
+  explainText: string;  // PRD-B-006 收尾：解析文本
   stemImgUrl: string;
   answerImgUrl: string;
   explainImgUrl: string;
@@ -271,6 +313,8 @@ const form = reactive<EditFormState>({
   difficult: 1,
   subjectId: '',
   stemText: '',
+  answerText: '',
+  explainText: '',
   stemImgUrl: '',
   answerImgUrl: '',
   explainImgUrl: '',
@@ -367,6 +411,64 @@ const onTagSearch = async (keyword: string) => {
   }
 };
 
+// ===== 标签推荐（PRD-B-006 收尾）=====
+// 策略：选多个 knowledgeId 时合并所有推荐结果，按 coCount 加总后去重排序，取 top 20 展示。
+// 单知识点直接用接口返回顺序（BE 已按 coCount desc）。
+const recommendedTags = ref<TagWithCoCount[]>([]);
+const recommendLoading = ref(false);
+
+const loadRecommendedTags = async (knowledgeIds: string[]) => {
+  if (!knowledgeIds || knowledgeIds.length === 0) {
+    recommendedTags.value = [];
+    return;
+  }
+  recommendLoading.value = true;
+  try {
+    // 并行调所有 knowledgeId 的推荐接口
+    const results = await Promise.allSettled(
+      knowledgeIds.map((kid) => tagByKnowledge(kid, 50))
+    );
+    // 合并：tagId → 累加 coCount
+    const mergeMap = new Map<number, TagWithCoCount>();
+    results.forEach((result) => {
+      if (result.status === 'fulfilled') {
+        const list: TagWithCoCount[] = (result.value as any)?.data ?? [];
+        if (Array.isArray(list)) {
+          list.forEach((item) => {
+            const existing = mergeMap.get(item.tagId);
+            if (existing) {
+              existing.coCount += item.coCount;
+            } else {
+              mergeMap.set(item.tagId, { ...item });
+            }
+          });
+        }
+      }
+    });
+    // 按合并后 coCount desc 排序，取 top 20
+    const merged = [...mergeMap.values()].sort((a, b) => b.coCount - a.coCount).slice(0, 20);
+    recommendedTags.value = merged;
+  } catch (err) {
+    console.warn('[QuestionEdit] 推荐标签加载失败：', err);
+    recommendedTags.value = [];
+  } finally {
+    recommendLoading.value = false;
+  }
+};
+
+// watch knowledgeIds：变化时重新拉推荐标签（防抖 300ms 避免树选择过程中多次触发）
+let recommendTimer: ReturnType<typeof setTimeout> | null = null;
+watch(
+  () => form.knowledgeIds,
+  (newIds) => {
+    if (recommendTimer) clearTimeout(recommendTimer);
+    recommendTimer = setTimeout(() => {
+      loadRecommendedTags(newIds);
+    }, 300);
+  },
+  { deep: true }
+);
+
 // ===== 图上传 =====
 const beforeUpload = (file: File): boolean => {
   const name = file.name || '';
@@ -455,6 +557,8 @@ const loadDetail = async (id: string) => {
     form.difficult = vo.difficult ?? 1;
     form.subjectId = vo.subjectId ?? '';
     form.stemText = vo.stemText || '';
+    form.answerText = vo.answerText || '';
+    form.explainText = vo.explainText || '';
     form.stemImgUrl = vo.stemImg || '';
     form.answerImgUrl = vo.answerImg || '';
     form.explainImgUrl = vo.explainImg || '';
@@ -533,6 +637,8 @@ const handleSubmit = async () => {
       difficult: form.difficult,
       subjectId: form.subjectId,
       stemText: form.stemText,
+      answerText: form.answerText || null,
+      explainText: form.explainText || null,
       stemImgUrl: form.stemImgUrl || null,
       answerImgUrl: form.answerImgUrl || null,
       explainImgUrl: form.explainImgUrl || null,

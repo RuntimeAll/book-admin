@@ -67,6 +67,8 @@ export interface QuestionVO {
   subjectId: string;
   shortTitle: string;
   stemText: string;
+  answerText?: string;   // PRD-B-006 收尾：答案文本（biz_text_content 外置）
+  explainText?: string;  // PRD-B-006 收尾：解析文本（biz_text_content 外置）
   stemImg: string; // ⚠️ 不带 _url 后缀（misikt 抓包归一化）
   answerImg?: string;
   explainImg?: string;
@@ -149,6 +151,17 @@ export interface QuestionPageResult {
 }
 
 /**
+ * 标签共现推荐 VO（POST /admin/question/tag/byKnowledge 返回元素）
+ *
+ * PRD-B-006 收尾：按知识点 id 查共现频次 top N 的标签
+ */
+export interface TagWithCoCount {
+  tagId: number;
+  tagName: string;
+  coCount: number;
+}
+
+/**
  * 题目编辑表单（POST /admin/question/edit 入参 — PRD §3.1 严格对齐）
  */
 export interface QuestionForm {
@@ -160,6 +173,8 @@ export interface QuestionForm {
   subjectId: string;
   shortTitle?: string;
   stemText: string;
+  answerText?: string | null;   // PRD-B-006 收尾：答案文本（填空/解答题）
+  explainText?: string | null;  // PRD-B-006 收尾：解析文本
   stemImgUrl?: string | null;
   answerImgUrl?: string | null;
   explainImgUrl?: string | null;

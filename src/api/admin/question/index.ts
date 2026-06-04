@@ -19,7 +19,8 @@ import type {
   QuestionKnowledgeNode,
   QuestionLazyTreeQuery,
   QuestionUploadResult,
-  FreeTagOption
+  FreeTagOption,
+  TagWithCoCount
 } from './types';
 
 /**
@@ -109,6 +110,25 @@ export function uploadAdminQuestionFile(formData: FormData): AxiosPromise<Questi
     headers: {
       'Content-Type': 'multipart/form-data'
     }
+  });
+}
+
+/**
+ * 按知识点查共现标签（POST /admin/question/tag/byKnowledge — PRD-B-006 收尾）
+ *
+ * 返回该知识点下共现频次 top N 的标签列表，用于 edit.vue 推荐标签区块。
+ *
+ * @param knowledgeId 知识点 biz_subject.id（字符串）
+ * @param topN 返回数量上限（默认 50）
+ */
+export function tagByKnowledge(
+  knowledgeId: string,
+  topN: number = 50
+): AxiosPromise<TagWithCoCount[]> {
+  return request({
+    url: '/admin/question/tag/byKnowledge',
+    method: 'post',
+    data: { knowledgeId, topN }
   });
 }
 
