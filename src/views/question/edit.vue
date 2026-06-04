@@ -219,6 +219,7 @@
               :width="560"
               :show-arrow="false"
               popper-class="tag-panel-popper"
+              @show="loadRecommendedTags"
               @after-leave="freeTagInput = ''"
             >
               <!-- 触发器：模拟 el-select multiple 外观 (el-popover trigger=click 已自动处理开关, 不要重复 @click) -->
@@ -652,17 +653,15 @@ const onScopeChange = () => {
   loadRecommendedTags();
 };
 
-// watch knowledgeIds：变化时重新拉推荐标签（防抖 300ms 避免树选择过程中多次触发）
-let recommendTimer: ReturnType<typeof setTimeout> | null = null;
+// watch 知识点(+ 范围 chip): 任一变化立即重拉推荐 (immediate:true 首次也跑;
+// getter 用 [...arr] 显式产生新数组确保 Vue 一定 catch 数组变化,不依赖 deep tracking;
+// 去防抖 — 用户期望"改完知识点立刻看到联动",300ms 让人误以为没变).
 watch(
-  () => form.knowledgeIds,
+  () => [[...form.knowledgeIds].join(','), currentScope.value],
   () => {
-    if (recommendTimer) clearTimeout(recommendTimer);
-    recommendTimer = setTimeout(() => {
-      loadRecommendedTags();
-    }, 300);
+    loadRecommendedTags();
   },
-  { deep: true }
+  { immediate: true }
 );
 
 // ===== 图上传 =====
