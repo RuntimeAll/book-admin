@@ -219,7 +219,6 @@
               :width="560"
               :show-arrow="false"
               popper-class="tag-panel-popper"
-              @show="loadRecommendedTags"
               @after-leave="freeTagInput = ''"
             >
               <!-- 触发器：模拟 el-select multiple 外观 (el-popover trigger=click 已自动处理开关, 不要重复 @click) -->
@@ -283,7 +282,7 @@
                     </div>
                     <!-- 推荐列表 -->
                     <div v-else class="tag-recommend-list">
-                      <label
+                      <div
                         v-for="tag in recommendedTags"
                         :key="tag.tagId"
                         class="tag-recommend-item"
@@ -292,12 +291,10 @@
                       >
                         <el-checkbox
                           :model-value="form.tagNames.includes(tag.tagName)"
-                          @change="toggleTag(tag.tagName)"
-                          @click.stop
                         />
                         <span class="tag-name">{{ tag.tagName }}</span>
                         <span class="tag-co-count">共现 {{ tag.coCount }}</span>
-                      </label>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -335,7 +332,7 @@
                       </el-button>
                     </div>
                     <div v-else class="tag-recommend-list">
-                      <label
+                      <div
                         v-for="opt in tagOptions"
                         :key="opt.id"
                         class="tag-recommend-item"
@@ -344,12 +341,10 @@
                       >
                         <el-checkbox
                           :model-value="form.tagNames.includes(opt.name)"
-                          @change="toggleTag(opt.name)"
-                          @click.stop
                         />
                         <span class="tag-name">{{ opt.name }}</span>
                         <span class="tag-co-count">({{ opt.useCount }})</span>
-                      </label>
+                      </div>
                     </div>
                   </div>
                 </div>
