@@ -261,7 +261,7 @@
 
                   <!-- 5 档范围切换 chip -->
                   <div class="tag-scope-chips">
-                    <el-radio-group v-model="currentScope" size="small" @change="onScopeChange">
+                    <el-radio-group v-model="currentScope" size="small">
                       <el-radio-button :value="5">叶子</el-radio-button>
                       <el-radio-button :value="4">节</el-radio-button>
                       <el-radio-button :value="3">章</el-radio-button>
@@ -641,11 +641,6 @@ const loadRecommendedTags = async () => {
   } finally {
     recommendLoading.value = false;
   }
-};
-
-// 范围 chip 切换时立即重拉
-const onScopeChange = () => {
-  loadRecommendedTags();
 };
 
 // watch 知识点(+ 范围 chip): 任一变化立即重拉推荐 (immediate:true 首次也跑;
