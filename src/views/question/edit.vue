@@ -208,60 +208,192 @@
           </div>
         </el-form-item>
 
-        <!-- 标签（H1 Bug2：remote select 搜索式多选 + allow-create 新建；PRD-B-006：推荐分组） -->
+        <!-- ===== 标签（PRD-B-006 D+E：自定义面板 = 推荐主视觉 + 5 档范围 chip + 全库搜索）===== -->
         <el-form-item label="标签">
-          <el-select
-            v-model="form.tagNames"
-            multiple
-            filterable
-            remote
-            :remote-method="onTagSearch"
-            :loading="tagSearching || recommendLoading"
-            allow-create
-            default-first-option
-            reserve-keyword
-            placeholder="搜索标签 / 直接输入新标签"
-            style="width: 560px"
-          >
-            <!-- 推荐标签分组（仅选了知识点时显示） -->
-            <el-option-group
-              v-if="recommendedTags.length > 0"
-              label="推荐标签（该子树下题目共现频次）"
+          <div class="tag-selector-wrap" style="width: 560px">
+            <!-- 已选 chip 展示行 + 触发下拉的输入框 -->
+            <el-popover
+              v-model:visible="tagPanelVisible"
+              trigger="click"
+              placement="bottom-start"
+              :width="560"
+              :show-arrow="false"
+              popper-class="tag-panel-popper"
+              @after-leave="freeTagInput = ''"
             >
-              <el-option
-                v-for="tag in recommendedTags"
-                :key="`rec-${tag.tagId}`"
-                :label="tag.tagName"
-                :value="tag.tagName"
-              >
-                <span>{{ tag.tagName }}</span>
-                <span class="text-gray-400 text-xs ml-2">共现 {{ tag.coCount }}</span>
-              </el-option>
-            </el-option-group>
-            <!-- 全字典搜索结果分组 -->
-            <el-option-group :label="recommendedTags.length > 0 ? '全部标签' : ''">
-              <el-option
-                v-for="opt in tagOptions"
-                :key="opt.id"
-                :label="opt.name"
-                :value="opt.name"
-              >
-                <span>{{ opt.name }}</span>
-                <span class="text-gray-400 text-xs ml-2">({{ opt.useCount }})</span>
-              </el-option>
-            </el-option-group>
-          </el-select>
+              <!-- 触发器：模拟 el-select multiple 外观 -->
+              <template #reference>
+                <div
+                  class="tag-trigger"
+                  :class="{ 'is-focus': tagPanelVisible }"
+                  @click="tagPanelVisible = !tagPanelVisible"
+                >
+                  <!-- 已选 chip -->
+                  <el-tag
+                    v-for="tagName in form.tagNames"
+                    :key="tagName"
+                    closable
+                    size="small"
+                    class="mr-1 mb-1"
+                    @close.stop="removeTag(tagName)"
+                  >
+                    {{ tagName }}
+                  </el-tag>
+                  <!-- 占位符 -->
+                  <span v-if="form.tagNames.length === 0" class="tag-placeholder">
+                    点击选择标签 / 输入新标签
+                  </span>
+                  <!-- 下拉箭头图标 -->
+                  <el-icon class="tag-arrow" :class="{ 'is-rotate': tagPanelVisible }">
+                    <ArrowDown />
+                  </el-icon>
+                </div>
+              </template>
+
+              <!-- ===== 下拉面板内容 ===== -->
+              <div class="tag-panel" @click.stop>
+
+                <!-- 推荐区（主视觉） -->
+                <div class="tag-panel-section">
+                  <div class="tag-panel-section-header">
+                    <span class="tag-panel-section-title">当前知识点关联（按共现频次）</span>
+                    <span v-if="recommendLoading" class="tag-panel-loading">加载中...</span>
+                  </div>
+
+                  <!-- 5 档范围切换 chip -->
+                  <div class="tag-scope-chips">
+                    <el-radio-group v-model="currentScope" size="small" @change="onScopeChange">
+                      <el-radio-button :value="5">叶子</el-radio-button>
+                      <el-radio-button :value="4">节</el-radio-button>
+                      <el-radio-button :value="3">章</el-radio-button>
+                      <el-radio-button :value="2">学期</el-radio-button>
+                      <el-radio-button :value="1">学段</el-radio-button>
+                    </el-radio-group>
+                  </div>
+
+                  <!-- 推荐标签列表 -->
+                  <div class="tag-recommend-body">
+                    <!-- 空态：未选知识点 -->
+                    <div v-if="form.knowledgeIds.length === 0" class="tag-empty-hint">
+                      选完知识点后这里会自动推荐相关标签
+                    </div>
+                    <!-- 空态：有知识点但推荐返空 -->
+                    <div v-else-if="!recommendLoading && recommendedTags.length === 0" class="tag-empty-hint">
+                      该范围下暂无共现标签，试试扩大范围或搜全库
+                    </div>
+                    <!-- 推荐列表 -->
+                    <div v-else class="tag-recommend-list">
+                      <label
+                        v-for="tag in recommendedTags"
+                        :key="tag.tagId"
+                        class="tag-recommend-item"
+                        :class="{ 'is-checked': form.tagNames.includes(tag.tagName) }"
+                        @click="toggleTag(tag.tagName)"
+                      >
+                        <el-checkbox
+                          :model-value="form.tagNames.includes(tag.tagName)"
+                          @change="toggleTag(tag.tagName)"
+                          @click.stop
+                        />
+                        <span class="tag-name">{{ tag.tagName }}</span>
+                        <span class="tag-co-count">共现 {{ tag.coCount }}</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 分割线 -->
+                <el-divider class="my-2" />
+
+                <!-- 全库搜索区 -->
+                <div class="tag-panel-section">
+                  <div class="tag-panel-section-header">
+                    <span class="tag-panel-section-title">搜索全库</span>
+                  </div>
+                  <div class="tag-search-row">
+                    <el-input
+                      v-model="globalSearchKeyword"
+                      placeholder="输入关键词搜索已有标签"
+                      size="small"
+                      clearable
+                      style="flex: 1"
+                      @input="onGlobalSearch"
+                      @keydown.enter.prevent="tryAddFreeTag(globalSearchKeyword)"
+                    >
+                      <template #prefix>
+                        <el-icon><Search /></el-icon>
+                      </template>
+                    </el-input>
+                  </div>
+                  <!-- 全库搜索结果 -->
+                  <div v-if="globalSearchKeyword" class="tag-search-results">
+                    <div v-if="tagSearching" class="tag-empty-hint">搜索中...</div>
+                    <div v-else-if="tagOptions.length === 0" class="tag-empty-hint">
+                      未找到匹配标签 —
+                      <el-button link type="primary" size="small" @click="tryAddFreeTag(globalSearchKeyword)">
+                        直接新建"{{ globalSearchKeyword }}"
+                      </el-button>
+                    </div>
+                    <div v-else class="tag-recommend-list">
+                      <label
+                        v-for="opt in tagOptions"
+                        :key="opt.id"
+                        class="tag-recommend-item"
+                        :class="{ 'is-checked': form.tagNames.includes(opt.name) }"
+                        @click="toggleTag(opt.name)"
+                      >
+                        <el-checkbox
+                          :model-value="form.tagNames.includes(opt.name)"
+                          @change="toggleTag(opt.name)"
+                          @click.stop
+                        />
+                        <span class="tag-name">{{ opt.name }}</span>
+                        <span class="tag-co-count">({{ opt.useCount }})</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 自由标签输入区 -->
+                <el-divider class="my-2" />
+                <div class="tag-panel-section">
+                  <div class="tag-panel-section-header">
+                    <span class="tag-panel-section-title">新建自由标签</span>
+                    <span class="tag-panel-section-hint">（字典里没有的，直接输入后回车）</span>
+                  </div>
+                  <div class="tag-search-row">
+                    <el-input
+                      v-model="freeTagInput"
+                      placeholder="输入新标签名，回车添加"
+                      size="small"
+                      style="flex: 1"
+                      @keydown.enter.prevent="tryAddFreeTag(freeTagInput)"
+                    />
+                    <el-button
+                      size="small"
+                      type="primary"
+                      plain
+                      :disabled="!freeTagInput.trim()"
+                      @click="tryAddFreeTag(freeTagInput)"
+                    >添加</el-button>
+                  </div>
+                </div>
+
+              </div>
+            </el-popover>
+          </div>
           <div class="text-xs text-gray-400 mt-1">
-            输入关键词搜索已有标签；找不到时直接回车新建（BE 自动建字典）
+            推荐区按知识点共现自动推荐；可搜全库 / 直接新建自由标签（BE 自动建字典）
           </div>
         </el-form-item>
+
       </el-form>
     </el-card>
   </div>
 </template>
 
 <script setup name="QuestionEdit" lang="ts">
-import { Close, Plus } from '@element-plus/icons-vue';
+import { Close, Plus, ArrowDown, Search } from '@element-plus/icons-vue';
 import {
   editAdminQuestion,
   getAdminQuestion,
@@ -390,44 +522,103 @@ const removeOption = (idx: number) => {
   reindexOptionKeys();
 };
 
-// ===== 标签 remote search（H1 Bug2） =====
-// keyword='' 时由 BE 返热门 top 20；非空时走 LIKE。
-// allow-create 让用户直接回车输入新 tag（BE 收 tagNames 字符串数组，按 name 查/建字典）。
-const tagOptions = ref<FreeTagOption[]>([]);
-const tagSearching = ref(false);
+// ===== 标签面板状态（D+E：自定义 popover 面板）=====
+const tagPanelVisible = ref(false);
 
-const onTagSearch = async (keyword: string) => {
-  tagSearching.value = true;
-  try {
-    const kw = (keyword ?? '').trim();
-    const res: any = await searchAdminFreeTag(kw === '' ? null : kw, 20);
-    const data: FreeTagOption[] = res?.data ?? [];
-    tagOptions.value = Array.isArray(data) ? data : [];
-  } catch (err) {
-    console.warn('[QuestionEdit] freeTagSearch 失败：', err);
-    tagOptions.value = [];
-  } finally {
-    tagSearching.value = false;
+// ===== 标签操作 =====
+const toggleTag = (tagName: string) => {
+  const idx = form.tagNames.indexOf(tagName);
+  if (idx >= 0) {
+    form.tagNames.splice(idx, 1);
+  } else {
+    form.tagNames.push(tagName);
   }
 };
 
-// ===== 标签推荐（PRD-B-006 收尾）=====
-// 策略：选多个 knowledgeId 时合并所有推荐结果，按 coCount 加总后去重排序，取 top 20 展示。
-// 单知识点直接用接口返回顺序（BE 已按 coCount desc）。
+const removeTag = (tagName: string) => {
+  const idx = form.tagNames.indexOf(tagName);
+  if (idx >= 0) form.tagNames.splice(idx, 1);
+};
+
+// ===== 自由标签输入（面板内"新建"区）=====
+const freeTagInput = ref('');
+
+const tryAddFreeTag = (input: string) => {
+  const val = (input || '').trim();
+  if (!val) return;
+  if (!form.tagNames.includes(val)) {
+    form.tagNames.push(val);
+  }
+  // 清空对应输入框
+  if (input === freeTagInput.value) {
+    freeTagInput.value = '';
+  } else if (input === globalSearchKeyword.value) {
+    globalSearchKeyword.value = '';
+    tagOptions.value = [];
+  }
+};
+
+// ===== 全库搜索（面板内搜索区）=====
+const globalSearchKeyword = ref('');
+const tagOptions = ref<FreeTagOption[]>([]);
+const tagSearching = ref(false);
+
+let searchTimer: ReturnType<typeof setTimeout> | null = null;
+
+const onGlobalSearch = (keyword: string) => {
+  if (searchTimer) clearTimeout(searchTimer);
+  searchTimer = setTimeout(async () => {
+    const kw = (keyword ?? '').trim();
+    if (!kw) {
+      tagOptions.value = [];
+      return;
+    }
+    tagSearching.value = true;
+    try {
+      const res: any = await searchAdminFreeTag(kw, 20);
+      const data: FreeTagOption[] = res?.data ?? [];
+      tagOptions.value = Array.isArray(data) ? data : [];
+    } catch (err) {
+      console.warn('[QuestionEdit] freeTagSearch 失败：', err);
+      tagOptions.value = [];
+    } finally {
+      tagSearching.value = false;
+    }
+  }, 300);
+};
+
+// ===== 标签推荐（PRD-B-006 D+E）=====
+// currentScope: 5 档范围（5=叶子/4=节/3=章/2=学期/1=学段），默认叶子
+const currentScope = ref<1 | 2 | 3 | 4 | 5>(5);
+
 const recommendedTags = ref<TagWithCoCount[]>([]);
 const recommendLoading = ref(false);
 
-const loadRecommendedTags = async (knowledgeIds: string[]) => {
+/**
+ * 把 biz_subject ID 截到目标 level 前缀长度
+ * level 1 学段: 4 位 / level 2 学期: 7 位 / level 3 章: 10 位 / level 4 节: 13 位 / level 5 叶子: 16 位
+ */
+const truncateToLevel = (id: string, level: 1 | 2 | 3 | 4 | 5): string => {
+  const targetLen = 1 + 3 * level;
+  return id.length > targetLen ? id.substring(0, targetLen) : id;
+};
+
+const loadRecommendedTags = async () => {
+  const knowledgeIds = form.knowledgeIds;
   if (!knowledgeIds || knowledgeIds.length === 0) {
     recommendedTags.value = [];
     return;
   }
   recommendLoading.value = true;
   try {
-    // 并行调所有 subjectId（叶子节点 id，LIKE 对自身也匹配）的推荐接口
+    // 截断到目标 level，然后去重
+    const truncated = [...new Set(knowledgeIds.map((id) => truncateToLevel(id, currentScope.value)))];
+
+    // 并行调所有截断后 subjectId 的推荐接口
     const results = await Promise.allSettled(
-      knowledgeIds.map((kid) => tagBySubject(kid, 50))
+      truncated.map((kid) => tagBySubject(kid, 50))
     );
+
     // 合并：tagId → 累加 coCount
     const mergeMap = new Map<number, TagWithCoCount>();
     results.forEach((result) => {
@@ -445,8 +636,9 @@ const loadRecommendedTags = async (knowledgeIds: string[]) => {
         }
       }
     });
-    // 按合并后 coCount desc 排序，取 top 20
-    const merged = [...mergeMap.values()].sort((a, b) => b.coCount - a.coCount).slice(0, 20);
+
+    // 按合并后 coCount desc 排序，取 top 50 显示
+    const merged = [...mergeMap.values()].sort((a, b) => b.coCount - a.coCount).slice(0, 50);
     recommendedTags.value = merged;
   } catch (err) {
     console.warn('[QuestionEdit] 推荐标签加载失败：', err);
@@ -456,14 +648,19 @@ const loadRecommendedTags = async (knowledgeIds: string[]) => {
   }
 };
 
+// 范围 chip 切换时立即重拉
+const onScopeChange = () => {
+  loadRecommendedTags();
+};
+
 // watch knowledgeIds：变化时重新拉推荐标签（防抖 300ms 避免树选择过程中多次触发）
 let recommendTimer: ReturnType<typeof setTimeout> | null = null;
 watch(
   () => form.knowledgeIds,
-  (newIds) => {
+  () => {
     if (recommendTimer) clearTimeout(recommendTimer);
     recommendTimer = setTimeout(() => {
-      loadRecommendedTags(newIds);
+      loadRecommendedTags();
     }, 300);
   },
   { deep: true }
@@ -671,11 +868,7 @@ onMounted(() => {
   // 性能优化（H1 卡 §6 R12）：loadTree（biz_subject 2116 行整树 ~200KB）
   // 和 loadDetail（5 表 JOIN）从串行 await 改并行 fire；loading 只覆盖 detail —
   // 用户进编辑页先看到表单骨架，章节/知识点树异步填进 el-tree-select
-  // race condition 不存在：handleSubmit 校验 leafIdSet 时用户必须已点选过知识点，
-  // 那时树肯定已加载完
   loadTree();
-  // H1 Bug2：预拉热门标签 top 20，下拉无输入时也能展开看候选（与 loadTree 并行）
-  onTagSearch('');
   const rid = route.params.id;
   if (rid) {
     const idStr = String(Array.isArray(rid) ? rid[0] : rid).trim();
@@ -765,4 +958,167 @@ onMounted(() => {
   color: #303133;
 }
 
+/* ===== 标签自定义面板样式 ===== */
+.tag-selector-wrap {
+  position: relative;
+}
+
+/* 触发器：模拟 el-select multiple 外观 */
+.tag-trigger {
+  min-height: 32px;
+  padding: 4px 30px 4px 8px;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  position: relative;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.tag-trigger:hover {
+  border-color: #c0c4cc;
+}
+
+.tag-trigger.is-focus {
+  border-color: #409eff;
+  outline: none;
+}
+
+.tag-placeholder {
+  color: #a8abb2;
+  font-size: 14px;
+  line-height: 24px;
+}
+
+.tag-arrow {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #c0c4cc;
+  transition: transform 0.2s;
+}
+
+.tag-arrow.is-rotate {
+  transform: translateY(-50%) rotate(180deg);
+}
+
+/* 面板整体 */
+.tag-panel {
+  padding: 12px 0;
+}
+
+.tag-panel-section {
+  padding: 0 12px;
+}
+
+.tag-panel-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.tag-panel-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.tag-panel-section-hint {
+  font-size: 12px;
+  color: #909399;
+}
+
+.tag-panel-loading {
+  font-size: 12px;
+  color: #909399;
+}
+
+/* 范围切换 chip */
+.tag-scope-chips {
+  margin-bottom: 10px;
+}
+
+/* 推荐标签列表区 */
+.tag-recommend-body {
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid #f0f0f0;
+  border-radius: 4px;
+  background: #fafafa;
+}
+
+.tag-recommend-list {
+  padding: 4px 0;
+}
+
+.tag-recommend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+  user-select: none;
+}
+
+.tag-recommend-item:hover {
+  background: #f0f7ff;
+}
+
+.tag-recommend-item.is-checked {
+  background: #ecf5ff;
+}
+
+.tag-name {
+  flex: 1;
+  font-size: 13px;
+  color: #303133;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tag-co-count {
+  font-size: 11px;
+  color: #909399;
+  flex-shrink: 0;
+}
+
+/* 空态提示 */
+.tag-empty-hint {
+  padding: 12px;
+  font-size: 12px;
+  color: #909399;
+  text-align: center;
+}
+
+/* 全库搜索行 */
+.tag-search-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+/* 搜索结果列表 */
+.tag-search-results {
+  max-height: 160px;
+  overflow-y: auto;
+  border: 1px solid #f0f0f0;
+  border-radius: 4px;
+  background: #fafafa;
+}
+</style>
+
+<!-- 全局样式：覆盖 el-popover 内边距，让面板内容撑满 -->
+<style>
+.tag-panel-popper {
+  padding: 0 !important;
+}
 </style>
