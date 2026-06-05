@@ -65,12 +65,12 @@ export const constantRoutes: RouteRecordRaw[] = [
   {
     path: '',
     component: Layout,
-    redirect: '/index',
+    redirect: '/welcome',
     children: [
       {
-        path: '/index',
-        component: () => import('@/views/index.vue'),
-        name: 'Index',
+        path: '/welcome',
+        component: () => import('@/views/welcome/index.vue'),
+        name: 'Welcome',
         meta: { title: '首页', icon: 'dashboard', affix: true }
       }
     ]
@@ -89,7 +89,7 @@ export const constantRoutes: RouteRecordRaw[] = [
       }
     ]
   },
-  // ===== H1 卡 V-7 题库列表（本波静态占位；BE V-5 sys_menu 落地后动态路由会自动覆盖）=====
+  // ===== 题库（staticRoutes 兜底，BE sys_menu 落地后动态路由自动覆盖）=====
   {
     path: '/question',
     component: Layout,
@@ -110,7 +110,9 @@ export const constantRoutes: RouteRecordRaw[] = [
         meta: { title: '编辑题目', activeMenu: '/question/list', noCache: true }
       }
     ]
-  }
+  },
+  // 卷库 admin (PRD-B-006 FP8-10) 已砍除 — 卷库挂题/编辑权限放到教师端 book-ui, admin 用户身份建出的卷自动归公共;
+  // 此处不再注册 /paper 路由 + 删 views/paper + 删 api/admin/paper.
 ];
 
 // 动态路由，基于用户权限动态去加载

@@ -19,7 +19,8 @@ import type {
   QuestionKnowledgeNode,
   QuestionLazyTreeQuery,
   QuestionUploadResult,
-  FreeTagOption
+  FreeTagOption,
+  TagWithCoCount
 } from './types';
 
 /**
@@ -109,6 +110,27 @@ export function uploadAdminQuestionFile(formData: FormData): AxiosPromise<Questi
     headers: {
       'Content-Type': 'multipart/form-data'
     }
+  });
+}
+
+/**
+ * 按学科子树查共现标签（POST /admin/question/tag/bySubject — PRD-B-006 收尾·改实时算）
+ *
+ * BE 用 subjectId LIKE 前缀匹配（biz_subject.id 前 N 位），覆盖该子树下所有叶子题目，
+ * 实时统计共现频次 top N 的标签列表，用于 edit.vue 推荐标签区块。
+ * level 5 叶子节点直接传自身 id（LIKE 对自身也匹配）。
+ *
+ * @param subjectId biz_subject.id（任意 level 1-5，字符串）
+ * @param topN 返回数量上限（默认 50）
+ */
+export function tagBySubject(
+  subjectId: string,
+  topN: number = 50
+): AxiosPromise<TagWithCoCount[]> {
+  return request({
+    url: '/admin/question/tag/bySubject',
+    method: 'post',
+    data: { subjectId, topN }
   });
 }
 

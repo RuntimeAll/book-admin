@@ -12,6 +12,40 @@ import { createCustomNameComponent } from '@/utils/createCustomNameComponent';
 
 // 匹配views里面所有的.vue文件
 const modules = import.meta.glob('./../../views/**/*.vue');
+
+/**
+ * 菜单白名单 — 只允许路径前缀在此列表的顶级菜单通过 /getRouters 响应进入侧边栏。
+ * 不在白名单的顶级菜单（工作流/代码生成/演示模块/通知公告/监控等 RuoYi 模板冗余菜单）一律隐藏。
+ */
+const MENU_WHITELIST = [
+  '/welcome',
+  '/book',
+  '/question',
+  // '/paper' — 卷库 admin 已砍 (PRD-B-006 收尾), 卷库挂题/编辑统一走教师端 book-ui
+  '/system/user',
+  '/system/role',
+  '/system/menu',
+  '/system/dept',
+  '/system/post',
+  '/system/dict',
+  '/system/config',
+  '/system/tenant',
+  '/system/log',
+  '/system/oss'
+];
+
+/**
+ * 检查顶级菜单路由是否在白名单内。
+ * 规则：路由 path（或其任意 children 的 path）匹配 MENU_WHITELIST 中任意前缀即通过。
+ */
+const isMenuAllowed = (route: RouteRecordRaw): boolean => {
+  const routePath = (route.path || '').toLowerCase();
+  return MENU_WHITELIST.some((allowed) => {
+    const prefix = allowed.toLowerCase();
+    // 顶级菜单 path 匹配白名单前缀，或白名单前缀匹配顶级 path（系统管理类以 /system 开头）
+    return routePath.startsWith(prefix) || prefix.startsWith(routePath);
+  });
+};
 export const usePermissionStore = defineStore('permission', () => {
   const routes = ref<RouteRecordRaw[]>([]);
   const addRoutes = ref<RouteRecordRaw[]>([]);
@@ -47,7 +81,9 @@ export const usePermissionStore = defineStore('permission', () => {
   };
   const generateRoutes = async (): Promise<RouteRecordRaw[]> => {
     const res = await getRouters();
-    const { data } = res;
+    // 白名单过滤：只保留 MENU_WHITELIST 允许的顶级菜单，隐藏演示/工作流/通知公告等冗余模块
+    const filteredData = (res.data as RouteRecordRaw[]).filter(isMenuAllowed);
+    const { data } = { data: filteredData };
     const sdata = JSON.parse(JSON.stringify(data));
     const rdata = JSON.parse(JSON.stringify(data));
     const defaultData = JSON.parse(JSON.stringify(data));
