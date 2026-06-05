@@ -93,61 +93,15 @@
           <div class="upload-tip">支持 png/jpg/jpeg，单图 ≤ 5MB</div>
         </el-form-item>
 
-        <!-- 选项（仅选择题） -->
-        <el-form-item v-if="form.questionType === 1" label="选项">
-          <div class="options-wrap">
-            <div v-for="(opt, idx) in form.options" :key="idx" class="option-row">
-              <span class="option-key">{{ opt.key }}</span>
-              <el-input
-                v-model="opt.content"
-                type="textarea"
-                :rows="1"
-                :autosize="{ minRows: 1, maxRows: 3 }"
-                :placeholder="`选项 ${opt.key} 内容`"
-                style="flex: 1; margin-right: 8px"
-              />
-              <el-button
-                v-if="form.options.length > 2"
-                link
-                type="danger"
-                icon="Delete"
-                @click="removeOption(idx)"
-              >删除</el-button>
-            </div>
-            <el-button
-              v-if="form.options.length < 10"
-              type="primary"
-              plain
-              icon="Plus"
-              size="small"
-              @click="addOption"
-            >新增选项</el-button>
-          </div>
-        </el-form-item>
-
-        <!-- 正确答案 -->
-        <el-form-item label="正确答案" prop="correctAnswer">
-          <template v-if="form.questionType === 1">
-            <el-input
-              v-model="form.correctAnswer"
-              placeholder="如 A 或 AB（多选）"
-              style="width: 240px"
-              @input="form.correctAnswer = ($event || '').toUpperCase()"
-            />
-            <span class="ml-2 text-xs text-gray-400">每个字符必须出现在已添加的选项 key 中</span>
-          </template>
-          <template v-else-if="form.questionType === 3">
-            <el-radio-group v-model="form.correctAnswer">
-              <el-radio value="正确">正确</el-radio>
-              <el-radio value="错误">错误</el-radio>
-            </el-radio-group>
-          </template>
-          <template v-else-if="form.questionType === 4">
-            <el-input v-model="form.correctAnswer" placeholder="计算结果" style="width: 360px" />
-          </template>
-          <template v-else>
-            <el-input v-model="form.correctAnswer" type="textarea" :rows="3" placeholder="参考答案" />
-          </template>
+        <!-- 选项/答案录入暂未实现（PRD-B-013 降级；PRD-B-014 落地后替换本 Alert） -->
+        <el-form-item label=" ">
+          <el-alert
+            title="答案/选项录入暂未实现"
+            description="本字段已于 PRD-B-013 清理，待 PRD-B-014 真题录入卡落地。当前请通过 题干图 + 答案图 录入答案"
+            type="warning"
+            show-icon
+            :closable="false"
+          />
         </el-form-item>
 
         <!-- 答案图（非选择题显示） -->
@@ -399,7 +353,6 @@ import {
 } from '@/api/admin/question';
 import type {
   FreeTagOption,
-  OptionItem,
   QuestionForm,
   QuestionKnowledgeNode,
   QuestionVO,
@@ -429,8 +382,6 @@ interface EditFormState {
   stemImgUrl: string;
   answerImgUrl: string;
   explainImgUrl: string;
-  options: OptionItem[];
-  correctAnswer: string;
   knowledgeIds: string[];
   tagNames: string[];
 }
@@ -445,13 +396,6 @@ const form = reactive<EditFormState>({
   stemImgUrl: '',
   answerImgUrl: '',
   explainImgUrl: '',
-  options: [
-    { key: 'A', content: '' },
-    { key: 'B', content: '' },
-    { key: 'C', content: '' },
-    { key: 'D', content: '' }
-  ],
-  correctAnswer: '',
   knowledgeIds: [],
   tagNames: []
 });
@@ -471,8 +415,7 @@ const rules = reactive({
       },
       trigger: 'change'
     }
-  ],
-  correctAnswer: [{ required: true, message: '请填写正确答案', trigger: 'blur' }]
+  ]
 });
 
 const treeProps = { label: 'name', children: 'children', value: 'id' };
@@ -492,29 +435,6 @@ const loadTree = async () => {
     chapterTree.value = [];
     knowledgeTree.value = [];
   }
-};
-
-// ===== 选项动态增减 =====
-const KEYS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
-
-const reindexOptionKeys = () => {
-  form.options.forEach((opt, idx) => {
-    opt.key = KEYS[idx] ?? String(idx + 1);
-  });
-};
-
-const addOption = () => {
-  if (form.options.length >= 10) return;
-  form.options.push({ key: KEYS[form.options.length] ?? '', content: '' });
-};
-
-const removeOption = (idx: number) => {
-  if (form.options.length <= 2) {
-    proxy?.$modal.msgWarning('选择题至少保留 2 个选项');
-    return;
-  }
-  form.options.splice(idx, 1);
-  reindexOptionKeys();
 };
 
 // ===== 标签面板状态（D+E：自定义 popover 面板）=====
@@ -707,28 +627,6 @@ const leafIdSet = computed<Set<string>>(() => {
 });
 
 // ===== 编辑回填 =====
-const parseOptionsFromVO = (vo: any): OptionItem[] => {
-  // optionsJson 在 VO 里可能叫 optionsJson 或 options，按实测兜底
-  const raw = vo?.optionsJson ?? vo?.options ?? null;
-  if (Array.isArray(raw)) {
-    return raw
-      .filter((x: any) => x && (x.key || x.content !== undefined))
-      .map((x: any) => ({ key: String(x.key ?? ''), content: String(x.content ?? '') }));
-  }
-  // JSON string 兜底
-  if (typeof raw === 'string') {
-    try {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        return parsed.map((x: any) => ({ key: String(x.key ?? ''), content: String(x.content ?? '') }));
-      }
-    } catch (e) {
-      // ignore
-    }
-  }
-  return [];
-};
-
 const loadDetail = async (id: string) => {
   loading.value = true;
   try {
@@ -747,20 +645,6 @@ const loadDetail = async (id: string) => {
     form.stemImgUrl = vo.stemImg || '';
     form.answerImgUrl = vo.answerImg || '';
     form.explainImgUrl = vo.explainImg || '';
-    form.correctAnswer = vo.correctAnswer || '';
-
-    const parsedOptions = parseOptionsFromVO(vo);
-    if (parsedOptions.length >= 2) {
-      form.options = parsedOptions;
-    } else if (form.questionType === 1) {
-      // 选择题但 BE 没返选项，给默认 4 个
-      form.options = [
-        { key: 'A', content: '' },
-        { key: 'B', content: '' },
-        { key: 'C', content: '' },
-        { key: 'D', content: '' }
-      ];
-    }
 
     form.knowledgeIds = (vo.questionKnowledges || []).map((k) => String(k.knowledgeId));
     form.tagNames = (vo.freeTags || []).map((t) => t.name).filter(Boolean);
@@ -793,27 +677,6 @@ const handleSubmit = async () => {
     return;
   }
 
-  // 选择题校验：≥ 2 选项 + R3 答案 key 都在 options 内
-  if (form.questionType === 1) {
-    const validOptions = form.options.filter((o) => o.content.trim());
-    if (validOptions.length < 2) {
-      ElMessage.error('选择题至少需要 2 个非空选项');
-      return;
-    }
-    const optionKeys = new Set(form.options.map((o) => o.key));
-    const answerStr = (form.correctAnswer || '').toUpperCase().trim();
-    if (!answerStr) {
-      ElMessage.error('请填写正确答案');
-      return;
-    }
-    for (const ch of answerStr) {
-      if (!optionKeys.has(ch)) {
-        ElMessage.error(`答案 "${ch}" 不在选项 key 列表中（当前选项：${[...optionKeys].join(',')}）`);
-        return;
-      }
-    }
-  }
-
   submitting.value = true;
   try {
     const payload: QuestionForm = {
@@ -827,8 +690,6 @@ const handleSubmit = async () => {
       stemImgUrl: form.stemImgUrl || null,
       answerImgUrl: form.answerImgUrl || null,
       explainImgUrl: form.explainImgUrl || null,
-      optionsJson: form.questionType === 1 ? form.options : undefined,
-      correctAnswer: form.correctAnswer,
       tagNames: form.tagNames,
       questionKnowledges: leafKnowledgeIds.map((id) => ({ knowledgeId: id, source: 'U' as const }))
     };
@@ -921,29 +782,6 @@ onMounted(() => {
   font-size: 12px;
   color: #909399;
   margin-top: 4px;
-}
-
-.options-wrap {
-  width: 100%;
-}
-
-.option-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.option-key {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 32px;
-  background: #f5f7fa;
-  border-radius: 4px;
-  font-weight: bold;
-  color: #303133;
 }
 
 /* ===== 标签自定义面板样式 ===== */

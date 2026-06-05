@@ -30,14 +30,6 @@ export enum QuestionStatusEnum {
 }
 
 /**
- * 选项项（选择题 options_json 元素）
- */
-export interface OptionItem {
-  key: string; // 'A' / 'B' / 'C' / 'D' / ...
-  content: string;
-}
-
-/**
  * 题×知识点关联（U 轨）
  */
 export interface QuestionKnowledge {
@@ -65,7 +57,6 @@ export interface QuestionVO {
   questionType: number;
   difficult: number;
   subjectId: string;
-  shortTitle: string;
   stemText: string;
   answerText?: string;   // PRD-B-006 收尾：答案文本（biz_text_content 外置）
   explainText?: string;  // PRD-B-006 收尾：解析文本（biz_text_content 外置）
@@ -73,14 +64,10 @@ export interface QuestionVO {
   answerImg?: string;
   explainImg?: string;
   freeTag: string; // 老逗号串字段（保留兼容）
-  correctAnswer: string;
   score?: number;
   examYear?: string;
   examPaperId?: number;
   examPaperName?: string;
-  isShare?: number;
-  isRepeat?: number;
-  repeatQuestionId?: number;
   status: string; // '0' / '1' / '2'
   createUser?: number;
   createBy?: string;
@@ -171,16 +158,12 @@ export interface QuestionForm {
   questionType: number;
   difficult: number;
   subjectId: string;
-  shortTitle?: string;
   stemText: string;
   answerText?: string | null;   // PRD-B-006 收尾：答案文本（填空/解答题）
   explainText?: string | null;  // PRD-B-006 收尾：解析文本
   stemImgUrl?: string | null;
   answerImgUrl?: string | null;
   explainImgUrl?: string | null;
-  optionsJson?: OptionItem[];
-  correctAnswer?: string;
-  scoreStdJson?: any; // OOS-3 本卡不录入
   tagNames?: string[]; // FE 传字符串数组，BE 维护 biz_question_free_tag + 字典
   questionKnowledges: QuestionKnowledge[]; // ≥ 1
 }
